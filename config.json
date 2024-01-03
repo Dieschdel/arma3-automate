@@ -3,7 +3,6 @@
     "server_directory": "/games/arma3",
     "mod_directory": "/games/arma3/mods",
     "arma3_workshop_id": "107410",
-    "steam_user": "simon_leibfritz",
     "do_game_update": false,
     "mods": {
         "@cba_a3":              "450814997",

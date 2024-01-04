@@ -10,29 +10,75 @@ from pathlib import Path
 import json
 import jsonschema
 
+import argparse
+
+import shutil
+
 from colorama import Fore, Style
+
+from enum import Enum
+
+from typing import Any
+from functools import wraps
+
+import glob
+
+
+class LogLevel(Enum):
+    DEBUG = 1
+    INFO = 2
+    WARNING = 3
+    ERROR = 4
+
+    def __str__(self) -> str:
+        return str(self.value)
 
 
 class Log:
+    _logLevel = LogLevel.INFO
+
+    @staticmethod
+    def requiredLogLevel(level: LogLevel) -> Any:
+        def logLevelDecorator(func: Any):
+            @wraps(func)
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
+                if Log._logLevel.value <= level.value:
+                    return func(*args, **kwargs)
+            return wrapper
+        return logLevelDecorator
+
     @staticmethod
     def _log(msg: str, color: str | None = None, prefix: str = "") -> None:
         print(f"{color}{prefix}{msg}{Style.RESET_ALL}")
 
     @staticmethod
-    def error(msg: str) -> None:
-        Log._log(msg, color=Fore.RED, prefix="ERROR: ")
+    def setLogLevel(level: LogLevel):
+        Log._logLevel = level
 
     @staticmethod
+    @requiredLogLevel(LogLevel.DEBUG)
+    def debug(msg: str) -> None:
+        Log._log(msg, color=Fore.CYAN, prefix="DEBUG: ")
+
+    @staticmethod
+    @requiredLogLevel(LogLevel.INFO)
     def info(msg: str) -> None:
         Log._log(msg, color=Fore.BLUE, prefix="INFO: ")
 
     @staticmethod
-    def debug(msg: str) -> None:
-        Log._log(msg, color=Fore.YELLOW, prefix="DEBUG: ")
-
-    @staticmethod
+    @requiredLogLevel(LogLevel.ERROR)
     def success(msg: str) -> None:
         Log._log(msg, color=Fore.GREEN, prefix="SUCCESS: ")
+
+    @staticmethod
+    @requiredLogLevel(LogLevel.WARNING)
+    def warning(msg: str) -> None:
+        Log._log(msg, color=Fore.YELLOW, prefix="WARNING: ")
+
+    @staticmethod
+    @requiredLogLevel(LogLevel.ERROR)
+    def error(msg: str) -> None:
+        Log._log(msg, color=Fore.RED, prefix="ERROR: ")
 
 
 class Config:
@@ -80,10 +126,7 @@ class Config:
             self._configJson["mods"].items())
 
         self.STEAM_USER = str(
-            self._configJson["steam_user"]) if self._configJson["steam_user"] is not None else None
-
-        self.DO_GAME_UPDATE = bool(
-            self._configJson["do_game_update"]) if self._configJson["do_game_update"] is not None else False
+            self._configJson.get("steam_user") if self._configJson.get("steam_user") is not None else None)
 
         self.ARMA_3_WORKSHOP_ID = str(self._configJson["arma3_workshop_id"])
         self.WORKSHOP_DIR = self.SERVER_DIR / \
@@ -200,25 +243,57 @@ def createModSymlinks(mods: list[tuple[str, str]], config: Config) -> None:
             exit()
 
 
-config = Config(filename="config_test.json")
-Log.info("Config loaded.")
+def download_mods(config: Config) -> None:
+    steamCmdQuery = SteamCmdQuery(
+        config.STEAM_CMD, config.SERVER_DIR, config.STEAM_USER)
 
-steamCmdQuery = SteamCmdQuery(
-    config.STEAM_CMD, config.SERVER_DIR, config.STEAM_USER)
+    steamCmdQuery = addModDownloadsToQueryParameters(steamCmdQuery, config)
 
-if config.DO_GAME_UPDATE:
-    Log.info("Game update Enabled.")
-    steamCmdQuery = addGameUpdateToQueryParameters(steamCmdQuery)
+    Log.info("Starting Steam-CMD for automatic download/update.")
+    steamCmdQuery.run()
+    Log.info("Downloading Complete")
 
-steamCmdQuery = addModDownloadsToQueryParameters(steamCmdQuery, config)
+    assertAllModsAreDownloaded(config)
 
-Log.info("Starting Steam-CMD for automatic download/update.")
-steamCmdQuery.run()
-Log.info("Downloading Complete")
+    Log.info("Creating Mod directories (symbolic links)")
+    createModSymlinks(config.MODS, config)
 
-assertAllModsAreDownloaded(config)
+    Log.success("All Mods successfully downloaded!")
 
-Log.info("Creating Mod directories (symbolic links)")
-createModSymlinks(config.MODS, config)
 
-Log.success("All Mods successfully downloaded!")
+def clean(config: Config) -> None:
+    if os.path.isdir(config.WORKSHOP_DIR):
+        Log.debug(f"Deleting '{config.WORKSHOP_DIR}'")
+        shutil.rmtree(config.WORKSHOP_DIR)
+
+    if os.path.isdir(config.MODS_DIR):
+        Log.debug(f"Deleting '{config.MODS_DIR}/*'")
+        modFolders = glob.glob(f"{config.MODS_DIR}/*'")
+        for f in modFolders:
+            os.remove(f)
+
+    Log.info("Auxiliary files deleted.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Arma 3 mod server mod downloaded. See https://github.com/Dieschdel/arma3-automate for more info')
+    parser.add_argument(
+        '--clean', help='deletes all downloaded mods and auxiliary files', action="store_true")
+    parser.add_argument(
+        "--no-download-mods", action="store_true", help="stops the download of mods but still processes the other flags (debug)")
+    parser.add_argument(
+        "--log-level", choices=[level.name for level in list(LogLevel)], help="Sets Log-Level to the specified option")
+    args = parser.parse_args()
+
+    if args.log_level:
+        Log.setLogLevel(LogLevel[args.log_level])
+
+    config = Config(filename="config.json")
+    Log.info("Config loaded.")
+
+    if args.clean:
+        clean(config)
+
+    if not args.no_download_mods:
+        download_mods(config)

@@ -2,5 +2,6 @@
   "python.analysis.typeCheckingMode": "strict",
   "[python]": {
     "editor.defaultFormatter": "ms-python.autopep8",
+    "editor.formatOnSave": true
   }
 }

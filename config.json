@@ -3,17 +3,13 @@
     "server_directory": "/games/arma3",
     "mod_directory": "/games/arma3/mods",
     "arma3_workshop_id": "107410",
-    "do_game_update": false,
     "mods": {
-        "@cba_a3":              "450814997",
-        "@ace3":                "463939057",
-        "@alive":               "620260972",
-        "@cup_terrains_core":   "583496184",
-        "@cup_terrains_maps":   "583544987",
-        "@cup_weapons":         "497660133",
-        "@cup_units":           "497661914",
-        "@cup_vehicles":        "541888371",
-        "@blastcore":           "767380317",
-        "@blastcore_server":    "855973772"
+        "@cba_a3":              	"450814997",
+        "@enhanced_movement":  		"333310405",
+        "@enhanced_rappelling":  	"713709341",
+        "@enhanced_gps":  		    "2480263219",
+        "@enhanced_missile_smoke":  "1484261993",
+        "@weather_plus":  		    "2735613231",
+        "@whiplash_animations":  	"1522831842"
     }
 }

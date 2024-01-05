@@ -242,6 +242,8 @@ def createModSymlinks(mods: list[tuple[str, str]], config: Config) -> None:
                 f"Mod '{modName}' was expected in {real_path} but is not present. Are there any download errors?")
             exit()
 
+def toLowercase(config: Config) -> None:
+   os.system(r"(cd {} && find . -depth -exec rename -v 's/(.*)\/([^\/]*)/$1\/\L$2/' {{}} \;)".format(config.ARMA_3_WORKSHOP_ID))
 
 def download_mods(config: Config) -> None:
     steamCmdQuery = SteamCmdQuery(
@@ -252,8 +254,10 @@ def download_mods(config: Config) -> None:
     Log.info("Starting Steam-CMD for automatic download/update.")
     steamCmdQuery.run()
     Log.info("Downloading Complete")
-
+    
     assertAllModsAreDownloaded(config)
+    
+    toLowercase(config)
 
     Log.info("Creating Mod directories (symbolic links)")
     createModSymlinks(config.MODS, config)
@@ -270,9 +274,12 @@ def clean(config: Config) -> None:
         Log.debug(f"Deleting '{config.MODS_DIR}/*'")
         modFolders = glob.glob(f"{config.MODS_DIR}/*'")
         for f in modFolders:
-            os.remove(f)
+            os.unlink(f)
 
     Log.info("Auxiliary files deleted.")
+    
+
+    
 
 
 if __name__ == "__main__":

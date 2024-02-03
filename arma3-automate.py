@@ -243,7 +243,7 @@ def createModSymlinks(mods: list[tuple[str, str]], config: Config) -> None:
             exit()
 
 def toLowercase(config: Config) -> None:
-   os.system(r"(cd {} && find . -depth -exec rename -v 's/(.*)\/([^\/]*)/$1\/\L$2/' {{}} \;)".format(config.ARMA_3_WORKSHOP_ID))
+   os.system(r"(cd {} && find . -depth -exec rename -v 's/(.*)\/([^\/]*)/$1\/\L$2/' {} \;)".format(config.ARMA_3_WORKSHOP_ID))
 
 def download_mods(config: Config) -> None:
     steamCmdQuery = SteamCmdQuery(
